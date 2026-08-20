@@ -1,0 +1,1 @@
+Proof-of-concept analytics platform demonstrating dairy sector greenhouse gas benchmarking, regional emissions intensity comparisons, and feed additive intervention ROI modelling using USDA NASS and EPA GHG Inventory data
