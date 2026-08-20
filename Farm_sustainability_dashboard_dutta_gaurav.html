@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farm Animal Sustainability Analytics | Elanco Proof of Concept</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f8f7f4;color:#1a1a18;font-size:14px;line-height:1.5}
+.page{max-width:1100px;margin:0 auto;padding:24px}
+.page-header{margin-bottom:20px;border-bottom:1px solid #e1e0d9;padding-bottom:14px}
+.page-title{font-size:20px;font-weight:600;color:#1a1a18;margin-bottom:3px}
+.page-sub{font-size:12px;color:#52514e}
+.header-bar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500}
+.badge-success{background:#eaf3de;border:1px solid #c0dd97;color:#3b6d11}
+.badge-warn{background:#faeeda;border:1px solid #fac775;color:#854f0b}
+.badge-info{background:#e6f1fb;border:1px solid #b5d4f4;color:#185fa5}
+.dot{width:7px;height:7px;border-radius:50%;background:#639922;flex-shrink:0}
+.toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.toggle-label{font-size:12px;color:#52514e}
+.unit-btn{font-size:12px;padding:4px 10px;border-radius:5px;cursor:pointer;border:1px solid #d3d1c7;background:#fff;color:#52514e}
+.unit-btn.active{background:#e6f1fb;color:#185fa5;border-color:#b5d4f4}
+select{font-size:12px;padding:4px 8px;border:1px solid #d3d1c7;border-radius:5px;background:#fff;color:#1a1a18}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:#fff;border-radius:8px;padding:12px 14px;border:1px solid #e1e0d9}
+.kpi-label{font-size:11px;color:#52514e;margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+.kpi-val{font-size:21px;font-weight:600;color:#1a1a18;line-height:1.1}
+.kpi-sub{font-size:11px;margin-top:3px}
+.dn{color:#3b6d11}.up{color:#a32d2d}.neu{color:#52514e}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.card{background:#fff;border:1px solid #e1e0d9;border-radius:10px;padding:14px}
+.card-full{background:#fff;border:1px solid #e1e0d9;border-radius:10px;padding:14px;margin-bottom:12px}
+.card-title{font-size:13px;font-weight:600;color:#1a1a18;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:#52514e;margin-bottom:6px}
+.leg-item{display:flex;align-items:center;gap:4px}
+.leg-sq{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.scenario-card{background:#fff;border:1px solid #e1e0d9;border-radius:10px;padding:14px;margin-bottom:12px}
+.slider-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px}
+.sl-label{font-size:12px;color:#52514e;display:block;margin-bottom:3px}
+.sl-val{font-size:12px;font-weight:600;color:#1a1a18;margin-left:6px}
+.scenario-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.econ-kpi{background:#eaf3de;border:1px solid #c0dd97;border-radius:8px;padding:12px}
+.footer{font-size:10px;color:#888780;margin-top:14px;line-height:1.6;border-top:1px solid #e1e0d9;padding-top:10px}
+@media(max-width:680px){.grid2{grid-template-columns:1fr}.scenario-kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="page-header">
+  <p class="page-title">Farm Animal Sustainability Analytics</p>
+  <p class="page-sub">Proof-of-concept · Gaurav Dutta, DVM · Ph.D. Candidate, Animal Genomics, University of Connecticut · gaurav.dutta@uconn.edu</p>
+</div>
+
+<div class="header-bar">
+  <div class="badge-row">
+    <div class="badge badge-success"><span class="dot"></span><span id="mrvVerified">—</span> Tier 2 verified</div>
+    <div class="badge badge-warn" id="mrvAnomalyBadge">⚠ <span id="mrvAnomalies">—</span> anomalies flagged</div>
+    <div class="badge badge-info">IPCC Tier 2 · ISO 14044</div>
+  </div>
+  <div style="font-size:11px;color:#888780">USDA NASS · EPA GHG Inventory · Thoma et al. (2013)</div>
+</div>
+
+<div class="toggle-row">
+  <span class="toggle-label">Units:</span>
+  <button class="unit-btn active" id="btnMetric" onclick="setUnit('metric')">kg CO₂e / kg FPCM</button>
+  <button class="unit-btn" id="btnUS" onclick="setUnit('us')">lbs CO₂e / cwt</button>
+  <span class="toggle-label" style="margin-left:10px">Region:</span>
+  <select id="regionFilter" onchange="updateAll()">
+    <option value="all">All U.S.</option>
+    <option value="northeast">Northeast</option>
+    <option value="midwest">Midwest</option>
+    <option value="south">South</option>
+    <option value="west">West</option>
+  </select>
+</div>
+
+<div class="kpi-row" id="kpiRow"></div>
+
+<div class="card-full">
+  <!-- FIX 3: id="natAvgLabel" so JS can update it on unit switch -->
+  <p class="card-title">
+    Emissions intensity by state
+    <span style="font-size:11px;font-weight:400;color:#52514e">— — national avg <span id="natAvgLabel">1.24</span></span>
+  </p>
+  <div style="position:relative;height:220px"><canvas id="stateChart"></canvas></div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <p class="card-title">GHG source breakdown</p>
+    <div style="position:relative;height:175px"><canvas id="ghgChart"></canvas></div>
+    <div class="legend" style="margin-top:6px">
+      <span class="leg-item"><span class="leg-sq" style="background:#2a78d6"></span>Enteric CH₄</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#1baf7a"></span>Manure</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#eda100"></span>Feed</span>
+    </div>
+  </div>
+  <div class="card">
+    <p class="card-title">Farm-level: herd size vs. intensity</p>
+    <div class="legend">
+      <span class="leg-item"><span class="leg-sq" style="background:#1baf7a"></span>High efficiency</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#eda100"></span>Medium</span>
+      <span class="leg-item"><span class="leg-sq" style="background:#e34948"></span>Low</span>
+    </div>
+    <div style="position:relative;height:155px"><canvas id="scatterChart"></canvas></div>
+  </div>
+</div>
+
+<div class="card-full">
+  <p class="card-title">
+    Historical trajectory &amp; 2030 target
+    <span style="font-size:11px;font-weight:400;color:#52514e">
+      <span style="display:inline-block;width:18px;border-top:2px solid #2a78d6;vertical-align:middle;margin-right:3px"></span>Historical
+      <span style="display:inline-block;width:18px;border-top:2px dashed #1baf7a;vertical-align:middle;margin:0 3px 0 8px"></span>2030 target (0.95)
+    </span>
+  </p>
+  <div style="position:relative;height:150px"><canvas id="trendChart"></canvas></div>
+</div>
+
+<div class="scenario-card">
+  <p class="card-title">Sustainability intervention scenario modeller</p>
+  <div class="slider-row">
+    <div>
+      <span class="sl-label">Feed additive adoption (%)</span>
+      <input type="range" id="adoptSlider" min="0" max="100" value="30" step="1" oninput="updateScenario()" style="width:100%">
+      <span class="sl-val" id="adoptVal">30%</span>
+    </div>
+    <div>
+      <span class="sl-label">Enteric CH₄ reduction / treated cow (%)</span>
+      <input type="range" id="redSlider" min="5" max="30" value="15" step="1" oninput="updateScenario()" style="width:100%">
+      <span class="sl-val" id="redVal">15%</span>
+    </div>
+    <div>
+      <span class="sl-label">Additive cost ($/cow/day)</span>
+      <input type="range" id="costSlider" min="0.02" max="0.25" value="0.08" step="0.01" oninput="updateScenario()" style="width:100%">
+      <span class="sl-val" id="costVal">$0.08</span>
+    </div>
+  </div>
+  <div class="scenario-kpis">
+    <div class="kpi">
+      <p class="kpi-label">Baseline intensity</p>
+      <p class="kpi-val" id="sBase">1.21</p>
+      <p class="kpi-sub neu" id="sBaseUnit">kg CO₂e/kg FPCM</p>
+    </div>
+    <div class="kpi">
+      <p class="kpi-label">Scenario intensity</p>
+      <p class="kpi-val" id="sNew">—</p>
+      <p class="kpi-sub dn" id="sRed">—</p>
+    </div>
+    <div class="kpi econ-kpi">
+      <p class="kpi-label">Carbon inset value</p>
+      <p class="kpi-val dn" id="sInset">—</p>
+      <p class="kpi-sub neu">@ $20 / MT CO₂e</p>
+    </div>
+    <div class="kpi econ-kpi">
+      <p class="kpi-label">Net margin impact</p>
+      <p class="kpi-val" id="sMargin">—</p>
+      <p class="kpi-sub neu">per cwt milk</p>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Farm-level scatter points are simulated for demonstration. Economic projections are illustrative. Sources: Thoma et al. (2013) <em>Int. Dairy Journal</em>; EPA GHG Inventory (2024); USDA NASS (2022); Capper et al. (2009) <em>J. Animal Science</em>.
+</div>
+</div>
+
+<script>
+/* ── Constants ── */
+const NATIONAL_AVG = 1.235;
+const CARBON_INSET = 20;
+const DAYS_IN_MILK = 305;
+const COWS_PER_AVG_FARM = 300;
+const KG_MILK_PER_COW = 10000;
+const MILK_CWT_PER_COW = 220;
+
+let currentUnit = 'metric';
+
+const stateData = [
+  {state:'Vermont',     region:'northeast', intensity:0.95, efficiency:1.65, herd:180},
+  {state:'New York',    region:'northeast', intensity:1.02, efficiency:1.59, herd:890},
+  {state:'Pennsylvania',region:'northeast', intensity:1.08, efficiency:1.56, herd:110},
+  {state:'Wisconsin',   region:'midwest',   intensity:1.10, efficiency:1.55, herd:230},
+  {state:'Minnesota',   region:'midwest',   intensity:1.12, efficiency:1.54, herd:510},
+  {state:'Michigan',    region:'midwest',   intensity:1.14, efficiency:1.53, herd:420},
+  {state:'Ohio',        region:'midwest',   intensity:1.18, efficiency:1.51, herd:180},
+  {state:'Indiana',     region:'midwest',   intensity:1.20, efficiency:1.50, herd:240},
+  {state:'Texas',       region:'south',     intensity:1.28, efficiency:1.47, herd:3200},
+  {state:'Georgia',     region:'south',     intensity:1.35, efficiency:1.44, herd:420},
+  {state:'Florida',     region:'south',     intensity:1.42, efficiency:1.40, herd:760},
+  {state:'California',  region:'west',      intensity:1.10, efficiency:1.56, herd:1080},
+  {state:'Idaho',       region:'west',      intensity:1.15, efficiency:1.54, herd:990},
+  {state:'Washington',  region:'west',      intensity:1.18, efficiency:1.52, herd:680},
+  {state:'New Mexico',  region:'west',      intensity:1.65, efficiency:1.38, herd:2800},
+];
+const regionColors = {northeast:'#2a78d6',midwest:'#1baf7a',south:'#eb6834',west:'#eda100'};
+const allYears = [2018,2019,2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030];
+const histVals = [1.34,1.31,1.29,1.27,1.24,1.21];
+
+function rng(s,mn,mx){s=(s*1103515245+12345)&0x7fffffff;return mn+((s%1000)/1000)*(mx-mn);}
+
+const farmData = stateData.flatMap((st,si) =>
+  [0,1,2].map(i => {
+    const herd = Math.max(50, Math.round(st.herd * rng(si*17+i*31, 0.4, 1.8)));
+    const intensity = Math.max(0.82, Math.min(1.78, st.intensity + rng(si*23+i*41, -0.12, 0.12)));
+    const efficiency = Math.max(1.25, Math.min(1.75, st.efficiency + rng(si*37+i*53, -0.08, 0.08)));
+    return {herd, intensity, efficiency, milk: herd * MILK_CWT_PER_COW, region: st.region};
+  })
+);
+
+/* ── Unit helpers ──
+   cvt(v): converts a metric value to current unit (metric → same; US → ×100)
+   fmtI(v): formats a RAW METRIC value for display — applies ×100 internally when in US mode
+   RULE: never nest fmtI(cvt(v)) — fmtI already handles conversion
+*/
+function cvt(v)      { return currentUnit === 'metric' ? v : v * 100; }
+function fmtI(v)     { return currentUnit === 'metric' ? v.toFixed(2) : (v * 100).toFixed(1); } // FIX 1: takes raw metric
+function unitLabel() { return currentUnit === 'metric' ? 'kg CO₂e/kg FPCM' : 'lbs CO₂e/cwt'; }
+
+/* ── MRV badge logic ──
+   Anomaly rules (applied to farm-level data):
+   1. Intensity outlier   : intensity < 0.82 or > 1.65 kg CO2e/kg FPCM
+   2. Efficiency outlier  : feed efficiency < 1.28 or > 1.72 kg milk/kg DMI
+   3. Herd-intensity mismatch: very large herd (>2000) with high intensity (>1.40)
+      — large confinement operations typically achieve lower intensity
+   Tier 2 verification rate: farms that pass all three checks are considered
+   Tier 2 verifiable (no implausible values requiring manual review).
+*/
+function updateMRV(farms) {
+  const anomalies = farms.filter(f =>
+    f.intensity < 0.82 || f.intensity > 1.65 ||
+    f.efficiency < 1.28 || f.efficiency > 1.72 ||
+    (f.herd > 2000 && f.intensity > 1.40)
+  );
+  const verified = farms.length - anomalies.length;
+  const pct = Math.round((verified / farms.length) * 100);
+
+  document.getElementById('mrvVerified').textContent = pct + '%';
+  document.getElementById('mrvAnomalies').textContent = anomalies.length;
+
+  // Switch badge to green if zero anomalies, keep amber otherwise
+  const badge = document.getElementById('mrvAnomalyBadge');
+  badge.className = anomalies.length === 0
+    ? 'badge badge-success'
+    : 'badge badge-warn';
+}
+
+/* ── FIX 3 helper: update the bar chart subtitle ── */
+function updateNatAvgLabel() {
+  const val = currentUnit === 'metric'
+    ? NATIONAL_AVG.toFixed(2)
+    : Math.round(NATIONAL_AVG * 100).toString();
+  document.getElementById('natAvgLabel').textContent = val;
+}
+
+function getFiltered()     { const r=document.getElementById('regionFilter').value; return r==='all'?stateData:stateData.filter(d=>d.region===r); }
+function getFarmFiltered() { const r=document.getElementById('regionFilter').value; return r==='all'?farmData:farmData.filter(d=>d.region===r); }
+
+function buildKPIs(data) {
+  const ai = data.reduce((s,d)=>s+d.intensity,0)/data.length;
+  const ae = data.reduce((s,d)=>s+d.efficiency,0)/data.length;
+  const ah = Math.round(data.reduce((s,d)=>s+d.herd,0)/data.length);
+  const totalMT = Math.round(223e9 * ai / 1e3 / 1e6);
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi"><p class="kpi-label">Avg. emissions intensity</p><p class="kpi-val">${fmtI(ai)}</p><p class="kpi-sub neu">${unitLabel()}</p></div>
+    <div class="kpi"><p class="kpi-label">Enteric CH₄ share</p><p class="kpi-val">48%</p><p class="kpi-sub up">of total GHG</p></div>
+    <div class="kpi"><p class="kpi-label">Feed efficiency</p><p class="kpi-val">${ae.toFixed(2)}</p><p class="kpi-sub neu">kg milk / kg DMI</p></div>
+    <div class="kpi"><p class="kpi-label">Avg. herd size</p><p class="kpi-val">${ah.toLocaleString()}</p><p class="kpi-sub neu">cows / operation</p></div>
+    <div class="kpi"><p class="kpi-label">Est. US sector total</p><p class="kpi-val">${totalMT}M</p><p class="kpi-sub neu">MT CO₂e / year</p></div>`;
+}
+
+let stC, ghC, scC, trC;
+const gc='rgba(0,0,0,0.07)', tc='#52514e';
+
+function initCharts() {
+  stC = new Chart(document.getElementById('stateChart'), {
+    type:'bar',
+    data:{
+      labels: stateData.map(d=>d.state),
+      datasets:[{data:stateData.map(d=>d.intensity), backgroundColor:stateData.map(d=>regionColors[d.region]), borderRadius:3, borderSkipped:false}]
+    },
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>' '+ctx.parsed.x.toFixed(currentUnit==='metric'?2:1)+' '+unitLabel()}},
+        annotation:{annotations:{avg:{type:'line', scaleID:'x', value:NATIONAL_AVG, borderColor:'#888', borderWidth:1.5, borderDash:[5,4],
+          label:{display:true, content:'Nat. avg', position:'start', font:{size:10}, color:'#888', backgroundColor:'transparent', yAdjust:-10}}}}
+      },
+      scales:{
+        x:{grid:{color:gc}, ticks:{color:tc,font:{size:10}}, title:{display:true, text:unitLabel(), color:tc, font:{size:10}}},
+        y:{grid:{display:false}, ticks:{color:tc,font:{size:10}}}
+      }
+    }
+  });
+
+  ghC = new Chart(document.getElementById('ghgChart'), {
+    type:'doughnut',
+    data:{labels:['Enteric CH₄','Manure mgmt','Feed production'],
+      datasets:[{data:[48,29,23], backgroundColor:['#2a78d6','#1baf7a','#eda100'], borderWidth:2, borderColor:'#fff'}]},
+    options:{responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.label+': '+ctx.parsed+'% · est. '+Math.round(ctx.parsed*4.4)+' MT CO₂e/farm/yr'}}}}
+  });
+
+  const fc = farmData.map(f=>f.efficiency>1.55?'rgba(27,175,122,.75)':f.efficiency>1.47?'rgba(237,161,0,.75)':'rgba(227,73,72,.75)');
+  scC = new Chart(document.getElementById('scatterChart'), {
+    type:'bubble',
+    data:{datasets:[{data:farmData.map(f=>({x:f.herd, y:f.intensity, r:Math.max(4,Math.min(14,Math.sqrt(f.milk/55000)))})), backgroundColor:fc, borderColor:'transparent'}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>'Herd: '+ctx.raw.x.toLocaleString()+' · '+ctx.raw.y.toFixed(currentUnit==='metric'?2:1)+' '+unitLabel()}}},
+      scales:{
+        x:{grid:{color:gc}, ticks:{color:tc,font:{size:9}}, title:{display:true, text:'Herd size (cows)', color:tc, font:{size:10}}, min:0, max:6000},
+        y:{grid:{color:gc}, ticks:{color:tc,font:{size:9}}, title:{display:true, text:unitLabel(), color:tc, font:{size:10}}, min:0.78, max:1.82}
+      }}
+  });
+
+  /* FIX 2: trend data initialised in raw metric; updateAll() remaps with cvt() on every unit switch */
+  const histLine   = [...histVals, ...Array(7).fill(null)];
+  const targetLine = [null,null,null,null,null, 1.21, null,null,null,null,null,null, 0.95];
+  trC = new Chart(document.getElementById('trendChart'), {
+    type:'line',
+    data:{labels:allYears, datasets:[
+      {label:'Historical',   data:histLine,   borderColor:'#2a78d6', borderWidth:2, pointRadius:3, tension:0.3, fill:false, spanGaps:false},
+      {label:'2030 target',  data:targetLine, borderColor:'#1baf7a', borderWidth:2, borderDash:[6,4], pointRadius:3, fill:false, spanGaps:true}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.parsed.y!==null?ctx.parsed.y.toFixed(currentUnit==='metric'?2:1)+' '+unitLabel():'')}}},
+      scales:{
+        x:{grid:{display:false}, ticks:{color:tc,font:{size:10}}},
+        y:{grid:{color:gc}, ticks:{color:tc,font:{size:10}}, title:{display:true, text:unitLabel(), color:tc, font:{size:10}}, min:0.80, max:1.45}
+      }}
+  });
+}
+
+function updateAll() {
+  const data  = getFiltered();
+  const farms = getFarmFiltered();
+  buildKPIs(data);
+  updateMRV(farms);
+
+  /* FIX 3: keep subtitle in sync with current unit */
+  updateNatAvgLabel();
+
+  /* Bar chart */
+  stC.data.labels = data.map(d=>d.state);
+  stC.data.datasets[0].data = data.map(d=>cvt(d.intensity));
+  stC.data.datasets[0].backgroundColor = data.map(d=>regionColors[d.region]);
+  stC.options.plugins.annotation.annotations.avg.value = cvt(NATIONAL_AVG);
+  stC.options.plugins.annotation.annotations.avg.label.content = 'Nat. avg ' + cvt(NATIONAL_AVG).toFixed(currentUnit === 'metric' ? 2 : 0);
+  stC.options.scales.x.title.text = unitLabel();
+  stC.update();
+
+  /* Scatter */
+  const fc = farms.map(f=>f.efficiency>1.55?'rgba(27,175,122,.75)':f.efficiency>1.47?'rgba(237,161,0,.75)':'rgba(227,73,72,.75)');
+  scC.data.datasets[0].data = farms.map(f=>({x:f.herd, y:cvt(f.intensity), r:Math.max(4,Math.min(14,Math.sqrt(f.milk/55000)))}));
+  scC.data.datasets[0].backgroundColor = fc;
+  scC.options.scales.y.title.text = unitLabel();
+  scC.options.scales.y.min = cvt(0.78);
+  scC.options.scales.y.max = cvt(1.82);
+  scC.update();
+
+  /* FIX 2: remap trend data with cvt() so lines don't collapse on unit switch */
+  trC.data.datasets[0].data = [...histVals.map(v=>cvt(v)), ...Array(7).fill(null)];
+  trC.data.datasets[1].data = [null,null,null,null,null, cvt(1.21), null,null,null,null,null,null, cvt(0.95)];
+  trC.options.scales.y.title.text = unitLabel();
+  trC.options.scales.y.min = cvt(0.80);
+  trC.options.scales.y.max = cvt(1.45);
+  trC.update();
+
+  document.getElementById('sBaseUnit').textContent = unitLabel();
+  updateScenario();
+}
+
+function setUnit(u) {
+  currentUnit = u;
+  document.getElementById('btnMetric').classList.toggle('active', u==='metric');
+  document.getElementById('btnUS').classList.toggle('active', u==='us');
+  updateAll();
+}
+
+function updateScenario() {
+  const adopt = parseInt(document.getElementById('adoptSlider').value) / 100;
+  const red   = parseInt(document.getElementById('redSlider').value) / 100;
+  const cost  = parseFloat(document.getElementById('costSlider').value);
+
+  document.getElementById('adoptVal').textContent = Math.round(adopt*100)+'%';
+  document.getElementById('redVal').textContent   = Math.round(red*100)+'%';
+  document.getElementById('costVal').textContent  = '$'+cost.toFixed(2);
+
+  const totalRed = adopt * red * 0.48;
+  const newI     = 1.21 * (1 - totalRed);
+
+  /* FIX 1: fmtI takes raw metric value — no cvt() wrapper needed */
+  document.getElementById('sBase').textContent = fmtI(1.21);
+  document.getElementById('sNew').textContent  = fmtI(newI);
+  document.getElementById('sRed').textContent  = '−'+(totalRed*100).toFixed(1)+'%';
+
+  const milkKgFPCM    = COWS_PER_AVG_FARM * KG_MILK_PER_COW;
+  const baseEntericMT = 1.21 * milkKgFPCM * 0.48 / 1000;
+  const reductionMT   = adopt * red * baseEntericMT;
+  const insetRevenue  = reductionMT * CARBON_INSET;
+  const additiveCost  = adopt * cost * DAYS_IN_MILK * COWS_PER_AVG_FARM;
+  const netPerCWT     = (insetRevenue - additiveCost) / (COWS_PER_AVG_FARM * MILK_CWT_PER_COW);
+
+  document.getElementById('sInset').textContent = '$'+Math.round(insetRevenue).toLocaleString();
+  const sign = netPerCWT >= 0 ? '+' : '−';
+  const mEl  = document.getElementById('sMargin');
+  mEl.textContent = sign+' $'+Math.abs(netPerCWT).toFixed(2);
+  mEl.className   = 'kpi-val '+(netPerCWT>=0?'dn':'up');
+}
+
+window.addEventListener('load', () => {
+  buildKPIs(stateData);
+  updateMRV(farmData);
+  updateNatAvgLabel();
+  initCharts();
+  updateScenario();
+});
+</script>
+</body>
+</html>
